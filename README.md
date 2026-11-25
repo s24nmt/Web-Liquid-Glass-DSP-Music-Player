@@ -9,7 +9,7 @@ Below 960px, it uses a bottom navigation bar (Player, Sub & X-Over, Live EQ, Spa
 <img width="800" height="504" alt="PC Layout" src="https://github.com/user-attachments/assets/8838ac77-0cfd-4fcf-95d1-f08052d37d7f" />
 
 # Mobile Layout
-<img width="400" height="718" alt="Mobile Layout" src="https://github.com/user-attachments/assets/02979352-4cf2-4dd0-8150-a354559e00cd" />
+<img width="400" height="711" alt="Full Layout" src="https://github.com/user-attachments/assets/3bd59b58-3174-40e4-b5dd-d0b163181e12" />
 
 
 # 2. Web Audio API Signal Chain,
