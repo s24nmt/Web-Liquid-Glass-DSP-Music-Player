@@ -6,6 +6,10 @@ This is a self-contained single-file web application (Liquid Glass DSP Music Pla
 Mobile-First + Desktop Studio Rack:
 Below 960px, it uses a bottom navigation bar (Player, Sub & X-Over, Live EQ, Space FX) so only one view is active at a time, All volume, crossover, EQ, and FX faders use vertical orientation.
 
+<img width="800" height="504" alt="PC Layout" src="https://github.com/user-attachments/assets/8838ac77-0cfd-4fcf-95d1-f08052d37d7f" />
+<img width="400" height="718" alt="Mobile Layout" src="https://github.com/user-attachments/assets/02979352-4cf2-4dd0-8150-a354559e00cd" />
+
+
 # 2. Web Audio API Signal Chain,
 4-Band Parametric EQ (eqNodes):
 Low-Mid (peaking, default 250 Hz, range 120–600 Hz)
