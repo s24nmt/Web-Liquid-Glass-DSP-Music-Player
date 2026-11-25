@@ -1,0 +1,2826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#090b16">
+<title>Liquid Glass DSP Music Player</title>
+<style>
+  :root {
+    --glass-bg: linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.04));
+    --glass-border: rgba(255, 255, 255, 0.22);
+    --glass-highlight: rgba(255, 255, 255, 0.38);
+    --accent: #4df0ff;
+    --accent-glow: rgba(77, 240, 255, 0.45);
+    --sub: #ff5c7c;
+    --sub-glow: rgba(255, 92, 124, 0.45);
+    --eq: #a682ff;
+    --eq-glow: rgba(166, 130, 255, 0.45);
+    --text: #f5f8ff;
+    --muted: rgba(235, 242, 255, 0.62);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    background: #070913;
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    user-select: none;
+    padding: 14px 14px 92px;
+    max-width: 500px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  /* Ambient Liquid Background Orbs */
+  .ambient-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 0%, #161d3a 0%, #070913 70%);
+  }
+
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(75px);
+    opacity: 0.55;
+    animation: drift 16s ease-in-out infinite alternate;
+  }
+
+  .orb-1 {
+    width: 280px;
+    height: 280px;
+    background: #00c8ff;
+    top: -60px;
+    left: -70px;
+  }
+
+  .orb-2 {
+    width: 260px;
+    height: 260px;
+    background: #ff2e63;
+    bottom: 60px;
+    right: -80px;
+    animation-delay: -5s;
+  }
+
+  .orb-3 {
+    width: 220px;
+    height: 220px;
+    background: #7b42ff;
+    top: 42%;
+    left: 30%;
+    animation-delay: -10s;
+  }
+
+  @keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(35px, 45px) scale(1.15); }
+  }
+
+  /* Liquid Glass Surface */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    box-shadow:
+      0 14px 36px rgba(0, 0, 0, 0.45),
+      inset 0 1px 1px var(--glass-highlight);
+    border-radius: 24px;
+  }
+
+  /* Top Header */
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 4px 2px;
+    gap: 8px;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brand h1 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    background: linear-gradient(90deg, #ffffff, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .brand span {
+    font-size: 0.7rem;
+    color: var(--muted);
+    letter-spacing: 0.6px;
+  }
+
+  .header-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .add-btn {
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 0.76rem;
+    font-weight: 600;
+    color: #fff;
+    cursor: pointer;
+    background: linear-gradient(135deg, rgba(77, 240, 255, 0.35), rgba(123, 66, 255, 0.35));
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.5);
+    backdrop-filter: blur(14px);
+    transition: transform 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .add-btn:active { transform: scale(0.95); }
+  input[type="file"] { display: none; }
+
+  /* Preset Bar */
+  .preset-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    margin-bottom: 14px;
+    border-radius: 16px;
+  }
+
+  .preset-select {
+    flex: 1;
+    min-width: 0;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 999px;
+    color: var(--text);
+    font-size: 0.74rem;
+    font-weight: 600;
+    padding: 6px 10px;
+    outline: none;
+  }
+
+  .preset-select option {
+    background: #10152b;
+    color: #f5f8ff;
+  }
+
+  .preset-btn {
+    padding: 6px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .preset-btn.save {
+    border-color: rgba(77, 240, 255, 0.45);
+    color: var(--accent);
+  }
+
+  .preset-btn.edit {
+    border-color: rgba(166, 130, 255, 0.45);
+    color: var(--eq);
+  }
+
+  .preset-btn.del {
+    border-color: rgba(255, 92, 124, 0.45);
+    color: var(--sub);
+  }
+
+  /* Tabs */
+  .tab-panel { display: none; animation: fadeIn 0.22s ease; }
+  .tab-panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Player Hero Section */
+  .player-card {
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .hero-stage {
+    display: grid;
+    grid-template-columns: 1fr 66px;
+    gap: 12px;
+    align-items: stretch;
+    margin-bottom: 14px;
+  }
+
+  .art-visualizer {
+    position: relative;
+    height: 195px;
+    border-radius: 20px;
+    background: linear-gradient(160deg, rgba(12, 16, 32, 0.75), rgba(255, 255, 255, 0.04));
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow: inset 0 2px 16px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    cursor: pointer;
+  }
+
+  .album-art-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    filter: brightness(0.68) saturate(1.15);
+    z-index: 0;
+  }
+
+  .album-art-bg.visible {
+    opacity: 1;
+  }
+
+  canvas#visualizer {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: relative;
+    z-index: 1;
+  }
+
+  .art-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    color: var(--accent);
+    z-index: 2;
+  }
+
+  /* Vertical Volume Dock beside Visualizer */
+  .vol-dock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 6px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  }
+
+  .vol-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .mute-icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  /* Track Meta & Scrolling Marquee Title */
+  .track-meta {
+    text-align: center;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+
+  .track-title-wrap {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 4px;
+  }
+
+  .track-title-wrap.scrolling {
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+
+  .track-title {
+    display: inline-block;
+    font-size: 1.05rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .track-title.scrolling {
+    padding-left: 16px;
+    animation: marqueeScroll var(--marquee-dur, 12s) linear infinite;
+  }
+
+  .track-title.scrolling:hover {
+    animation-play-state: paused;
+  }
+
+  @keyframes marqueeScroll {
+    0%, 15% { transform: translateX(0); }
+    85%, 100% { transform: translateX(var(--marquee-offset, -50%)); }
+  }
+
+  .track-sub {
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .codec-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    background: rgba(77, 240, 255, 0.14);
+    border: 1px solid rgba(77, 240, 255, 0.35);
+    color: var(--accent);
+  }
+
+  /* Liquid Glass Progress Bar */
+  .progress-wrap {
+    margin-bottom: 14px;
+  }
+
+  .progress-track {
+    position: relative;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    overflow: hidden;
+    cursor: pointer;
+    touch-action: none;
+  }
+
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent), #9b7bff);
+    box-shadow: 0 0 14px var(--accent-glow);
+    pointer-events: none;
+  }
+
+  .time-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Transport Controls */
+  .transport {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .ctrl-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-size: 1rem;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.3);
+    transition: transform 0.15s ease, background 0.15s ease;
+  }
+
+  .ctrl-btn:active { transform: scale(0.92); }
+  .ctrl-btn.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(77, 240, 255, 0.16);
+  }
+
+  .play-main {
+    width: 60px;
+    height: 60px;
+    font-size: 1.35rem;
+    background: linear-gradient(135deg, rgba(77, 240, 255, 0.85), rgba(140, 100, 255, 0.85));
+    color: #060914;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 8px 24px var(--accent-glow), inset 0 2px 2px rgba(255, 255, 255, 0.7);
+  }
+
+  /* Glowing Neon Pill SUB Button */
+  #quickSubBtn {
+    width: auto;
+    min-width: 72px;
+    height: 46px;
+    padding: 0 14px;
+    border-radius: 999px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    line-height: 1;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    color: var(--muted);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.2);
+    transition: all 0.2s ease;
+  }
+
+  #quickSubBtn .sub-label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+  }
+
+  #quickSubBtn .sub-status {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.56rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    opacity: 0.75;
+  }
+
+  #quickSubBtn .sub-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.35);
+    transition: all 0.2s ease;
+  }
+
+  #quickSubBtn.active {
+    background: linear-gradient(145deg, rgba(255, 92, 124, 0.78), rgba(255, 46, 99, 0.45));
+    border-color: #ff859d;
+    color: #ffffff;
+    box-shadow:
+      0 0 14px rgba(255, 92, 124, 0.8),
+      0 0 28px rgba(255, 46, 99, 0.45),
+      inset 0 1px 2px rgba(255, 255, 255, 0.75);
+  }
+
+  #quickSubBtn.active .sub-status {
+    opacity: 1;
+  }
+
+  #quickSubBtn.active .sub-dot {
+    background: #ffffff;
+    box-shadow: 0 0 6px #ffffff, 0 0 10px var(--sub);
+  }
+
+  /* Playlist Queue Card */
+  .queue-card {
+    padding: 14px;
+  }
+
+  .section-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 8px;
+  }
+
+  .head-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    color: var(--muted);
+  }
+
+  /* Liquid Glass On/Off Switch */
+  .switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .switch-track {
+    position: absolute;
+    inset: 0;
+    cursor: pointer;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .switch-track::before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 2px;
+    top: 2px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+    transition: transform 0.2s ease;
+  }
+
+  .switch input:checked + .switch-track {
+    background: rgba(77, 240, 255, 0.45);
+    border-color: var(--accent);
+    box-shadow: 0 0 12px var(--accent-glow);
+  }
+
+  .switch.sub-switch input:checked + .switch-track {
+    background: rgba(255, 92, 124, 0.45);
+    border-color: var(--sub);
+    box-shadow: 0 0 12px var(--sub-glow);
+  }
+
+  .switch.eq-switch input:checked + .switch-track {
+    background: rgba(166, 130, 255, 0.45);
+    border-color: var(--eq);
+    box-shadow: 0 0 12px var(--eq-glow);
+  }
+
+  .switch input:checked + .switch-track::before {
+    transform: translateX(20px);
+  }
+
+  .dsp-body {
+    transition: opacity 0.2s ease;
+  }
+
+  .dsp-body.bypassed {
+    opacity: 0.42;
+    pointer-events: none;
+  }
+
+  .queue-list {
+    max-height: 170px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .queue-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid transparent;
+    font-size: 0.82rem;
+    cursor: pointer;
+    gap: 8px;
+  }
+
+  .queue-item.playing {
+    background: rgba(77, 240, 255, 0.14);
+    border-color: rgba(77, 240, 255, 0.4);
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .queue-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .queue-meta {
+    opacity: 0.72;
+    font-size: 0.68rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .empty-queue {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+    padding: 16px 0;
+  }
+
+  /* Vertical Fader System (All Sliders Vertical) */
+  .v-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 30px;
+    height: 132px;
+    background: transparent;
+    touch-action: none;
+    cursor: pointer;
+    --pct: 50%;
+    --fill: var(--accent);
+    --glow: var(--accent-glow);
+  }
+
+  .v-slider.sub-theme {
+    --fill: var(--sub);
+    --glow: var(--sub-glow);
+  }
+
+  .v-slider.eq-theme {
+    --fill: var(--eq);
+    --glow: var(--eq-glow);
+  }
+
+  .v-slider.vol-slider {
+    height: 126px;
+  }
+
+  .v-slider::-webkit-slider-runnable-track {
+    width: 8px;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(to top, var(--fill) var(--pct), rgba(255, 255, 255, 0.14) var(--pct));
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.45);
+  }
+
+  .v-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    margin-left: -8px;
+    background: radial-gradient(circle at 35% 30%, #ffffff, rgba(255, 255, 255, 0.78));
+    border: 1.5px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 0 0 14px var(--glow), 0 4px 10px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Mixer Consoles (Sub/Xover & EQ) */
+  .console-card {
+    padding: 16px 12px;
+    margin-bottom: 14px;
+  }
+
+  .fader-bank {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .fader-channel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 4px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    gap: 8px;
+  }
+
+  .ch-val {
+    font-size: 0.66rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    text-align: center;
+    min-height: 14px;
+  }
+
+  .ch-val.sub-txt { color: var(--sub); }
+  .ch-val.eq-txt { color: var(--eq); }
+
+  .ch-name {
+    font-size: 0.64rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.2;
+    font-weight: 600;
+  }
+
+  /* Toggle Pills */
+  .pill-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .glass-pill {
+    padding: 11px 6px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.22);
+    transition: all 0.15s ease;
+  }
+
+  .glass-pill.active-cyan {
+    background: rgba(77, 240, 255, 0.2);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 14px rgba(77, 240, 255, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  }
+
+  .glass-pill.active-sub {
+    background: rgba(255, 92, 124, 0.22);
+    border-color: var(--sub);
+    color: var(--sub);
+    box-shadow: 0 0 14px rgba(255, 92, 124, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  }
+
+  /* EQ Band Cards (Paired Vertical Freq + Gain Faders) */
+  .eq-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .eq-pair-card {
+    padding: 12px 8px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .eq-pair-title {
+    text-align: center;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .eq-pair-faders {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+
+  .eq-subcol {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .reset-chip {
+    padding: 5px 11px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  /* Floating Liquid Glass Bottom Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 28px);
+    max-width: 472px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    padding: 6px;
+    border-radius: 999px;
+    z-index: 50;
+  }
+
+  .nav-btn {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    padding: 11px 6px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .nav-btn.active {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.32);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3), inset 0 1px 1px rgba(255, 255, 255, 0.45);
+  }
+
+  /* Custom Glass Scrollbar for Desktop */
+  .queue-list::-webkit-scrollbar,
+  .dsp-rack-desktop::-webkit-scrollbar { width: 6px; }
+  .queue-list::-webkit-scrollbar-track,
+  .dsp-rack-desktop::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.04); border-radius: 999px; }
+  .queue-list::-webkit-scrollbar-thumb,
+  .dsp-rack-desktop::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.22); border-radius: 999px; }
+  .queue-list::-webkit-scrollbar-thumb:hover,
+  .dsp-rack-desktop::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+  /* Desktop Studio Console Layout (>= 960px) */
+  @media (min-width: 960px) {
+    body {
+      max-width: 1380px;
+      padding: 20px 28px 28px;
+      display: grid;
+      grid-template-columns: 430px 1fr;
+      grid-template-areas:
+        "topbar topbar"
+        "left   right";
+      gap: 16px 20px;
+      align-items: start;
+    }
+
+    header {
+      grid-area: topbar;
+      margin-bottom: 0;
+      padding-right: 430px;
+    }
+
+    .preset-bar {
+      grid-area: topbar;
+      justify-self: end;
+      width: 415px;
+      margin-bottom: 0;
+    }
+
+    #tab-player {
+      grid-area: left;
+      display: block !important;
+    }
+
+    .art-visualizer { height: 220px; }
+    .queue-list { max-height: 290px; }
+
+    /* DSP Engine Rack on Right */
+    .dsp-rack-desktop {
+      grid-area: right;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      padding: 16px;
+      border-radius: 24px;
+      background: linear-gradient(145deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.02));
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border: 1px solid var(--glass-border);
+      box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), inset 0 1px 1px var(--glass-highlight);
+      max-height: calc(100dvh - 104px);
+      overflow-y: auto;
+    }
+
+    .dsp-engine-header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 2px 4px;
+    }
+
+    .dsp-engine-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .dsp-rack-desktop .tab-panel {
+      display: block !important;
+      overflow-y: auto;
+    }
+
+    .dsp-rack-desktop #tab-sub {
+      grid-column: 1 / -1;
+    }
+
+    .console-card {
+      margin-bottom: 0;
+      background: rgba(12, 16, 32, 0.45);
+      border-color: rgba(255, 255, 255, 0.16);
+      box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.22);
+    }
+
+    .eq-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .bottom-nav { display: none; }
+
+    .ctrl-btn:hover, .glass-pill:hover, .preset-btn:hover, .reset-chip:hover {
+      border-color: rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.14);
+    }
+    .queue-item:hover { background: rgba(255, 255, 255, 0.1); }
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient-bg">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<header>
+  <div class="brand">
+    <h1>LIQUID DSP</h1>
+    <span>ACTIVE CROSSOVER PLAYER</span>
+  </div>
+  <div class="header-actions">
+    <label class="add-btn">
+      + Folder
+      <input type="file" id="folderInput" webkitdirectory directory multiple>
+    </label>
+    <label class="add-btn">
+      + Songs
+      <input type="file" id="fileInput" accept="audio/*" multiple>
+    </label>
+  </div>
+</header>
+
+<!-- Named Presets Bar -->
+<div class="glass preset-bar">
+  <select id="presetSelect" class="preset-select">
+    <option value="">-- Load Preset --</option>
+  </select>
+  <button class="preset-btn save" id="savePresetBtn">Save</button>
+  <button class="preset-btn edit" id="editPresetBtn">Edit</button>
+  <button class="preset-btn del" id="deletePresetBtn">Del</button>
+</div>
+
+<!-- TAB 1: MUSIC PLAYER -->
+<section class="tab-panel active" id="tab-player">
+  <div class="glass player-card">
+    <div class="hero-stage">
+      <div class="art-visualizer">
+        <img id="albumArt" class="album-art-bg" alt="">
+        <span class="art-badge" id="xoverBadge">24dB • 80 Hz</span>
+        <canvas id="visualizer"></canvas>
+      </div>
+
+      <!-- Vertical Master Volume Fader -->
+      <div class="vol-dock">
+        <span class="vol-label" id="volVal">85%</span>
+        <input type="range" class="v-slider vol-slider" id="volSlider" min="0" max="100" value="85" step="1">
+        <button class="mute-icon-btn" id="muteBtn" title="Mute">🔊</button>
+      </div>
+    </div>
+
+    <div class="track-meta">
+      <div class="track-title-wrap" id="trackTitleWrap">
+        <div class="track-title" id="trackTitle">No Track Loaded</div>
+      </div>
+      <div class="track-sub" id="trackSub">Tap "+ Folder" or "+ Songs" to load local audio</div>
+    </div>
+
+    <!-- Liquid Glass Touch Progress Bar -->
+    <div class="progress-wrap">
+      <div class="progress-track" id="progressTrack">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="time-row">
+        <span id="curTime">0:00</span>
+        <span id="durTime">0:00</span>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button class="ctrl-btn" id="loopBtn" title="Repeat Track">↻</button>
+      <button class="ctrl-btn" id="prevBtn" title="Previous">⏮</button>
+      <button class="ctrl-btn play-main" id="playBtn" title="Play/Pause">▶</button>
+      <button class="ctrl-btn" id="nextBtn" title="Next">⏭</button>
+      <button class="ctrl-btn" id="quickSubBtn" title="Toggle Sub">
+        <span class="sub-label">SUB</span>
+        <span class="sub-status"><span class="sub-dot"></span><span id="quickSubState">ON</span></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="glass queue-card">
+    <div class="section-head">
+      <span class="section-title">Local Queue</span>
+      <div class="head-controls">
+        <span class="section-title" id="queueCount">0 tracks</span>
+        <button class="reset-chip" id="clearQueueBtn">Clear</button>
+      </div>
+    </div>
+    <div class="queue-list" id="queueList">
+      <div class="empty-queue">Select a music folder or individual MP3, FLAC, or WAV files from your phone.</div>
+    </div>
+  </div>
+</section>
+
+<!-- DSP ENGINE RACK (Visible on Desktop >= 960px; tabs on Mobile) -->
+<div class="dsp-rack-desktop">
+  <div class="dsp-engine-header">
+    <span class="dsp-engine-title">DSP ENGINE</span>
+    <span class="section-title">REAL-TIME SIGNAL PROCESSOR</span>
+  </div>
+
+  <!-- TAB 2: ACTIVE CROSSOVER & SUBWOOFER -->
+  <section class="tab-panel" id="tab-sub">
+    <div class="glass console-card">
+      <div class="section-head">
+        <span class="section-title">Active Crossover & Sub</span>
+        <div class="head-controls">
+          <button class="reset-chip" id="resetSub">Reset</button>
+          <label class="switch sub-switch" title="Toggle Active Crossover & Sub">
+            <input type="checkbox" id="xoverPowerSwitch" checked>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="dsp-body" id="subDspBody">
+        <div class="fader-bank">
+          <div class="fader-channel">
+            <span class="ch-val" id="xoverVal">80Hz</span>
+            <input type="range" class="v-slider" id="xoverFreq" min="40" max="200" value="80" step="1">
+            <span class="ch-name">X-Over<br>Split</span>
+          </div>
+
+          <div class="fader-channel">
+            <span class="ch-val sub-txt" id="subGainVal">0.0dB</span>
+            <input type="range" class="v-slider sub-theme" id="subGain" min="-15" max="12" value="0" step="0.5">
+            <span class="ch-name">Sub<br>Level</span>
+          </div>
+
+          <div class="fader-channel">
+            <span class="ch-val sub-txt" id="subBoostFreqVal">45Hz</span>
+            <input type="range" class="v-slider sub-theme" id="subBoostFreq" min="25" max="90" value="45" step="1">
+            <span class="ch-name">Punch<br>Freq</span>
+          </div>
+
+          <div class="fader-channel">
+            <span class="ch-val sub-txt" id="subBoostGainVal">+2dB</span>
+            <input type="range" class="v-slider sub-theme" id="subBoostGain" min="0" max="12" value="2" step="0.5">
+            <span class="ch-name">Punch<br>Boost</span>
+          </div>
+
+          <div class="fader-channel">
+            <span class="ch-val sub-txt" id="subsonicVal">25Hz</span>
+            <input type="range" class="v-slider sub-theme" id="subsonicFreq" min="15" max="45" value="25" step="1">
+            <span class="ch-name">Subsonic<br>HPF</span>
+          </div>
+        </div>
+
+        <div class="pill-row">
+          <button class="glass-pill active-sub" id="subEnableBtn">SUB: ON</button>
+          <button class="glass-pill active-cyan" id="topsEnableBtn">TOPS: ON</button>
+          <button class="glass-pill" id="phaseBtn">PHASE: 0°</button>
+          <button class="glass-pill active-sub" id="subMonoBtn">SUB MONO: ON</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 3: LIVE PARAMETRIC EQ -->
+  <section class="tab-panel" id="tab-eq">
+    <div class="glass console-card">
+      <div class="section-head">
+        <span class="section-title">Live Parametric EQ</span>
+        <div class="head-controls">
+          <button class="reset-chip" id="resetEq">Flat EQ</button>
+          <label class="switch eq-switch" title="Toggle Live EQ">
+            <input type="checkbox" id="eqPowerSwitch" checked>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </div>
+      <div class="dsp-body" id="eqDspBody">
+        <div class="eq-grid" id="eqContainer"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TAB 4: STEREO & ECHO FX -->
+  <section class="tab-panel" id="tab-fx">
+    <div class="glass console-card">
+      <div class="section-head">
+        <span class="section-title">Stereo & Echo FX</span>
+        <div class="head-controls">
+          <button class="reset-chip" id="resetFx">Reset</button>
+          <label class="switch" title="Toggle Space FX">
+            <input type="checkbox" id="fxPowerSwitch" checked>
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="dsp-body" id="fxDspBody">
+        <div class="fader-bank" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="fader-channel">
+            <span class="ch-val" id="stereoWidthVal">100%</span>
+            <input type="range" class="v-slider" id="stereoWidth" min="0" max="200" value="100" step="5">
+            <span class="ch-name">Stereo<br>Width</span>
+          </div>
+
+          <div class="fader-channel">
+            <span class="ch-val eq-txt" id="echoTimeVal">280ms</span>
+            <input type="range" class="v-slider eq-theme" id="echoTime" min="60" max="750" value="280" step="10">
+            <span class="ch-name">Echo<br>Time</span>
+          </div>
+
+          <div class="fader-channel">
+            <span class="ch-val eq-txt" id="echoFeedbackVal">30%</span>
+            <input type="range" class="v-slider eq-theme" id="echoFeedback" min="0" max="70" value="30" step="2">
+            <span class="ch-name">Echo<br>Repeat</span>
+          </div>
+
+          <div class="fader-channel">
+            <span class="ch-val eq-txt" id="echoMixVal">0%</span>
+            <input type="range" class="v-slider eq-theme" id="echoMix" min="0" max="60" value="0" step="2">
+            <span class="ch-name">Echo<br>Mix</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- Bottom Navigation -->
+<nav class="glass bottom-nav">
+  <button class="nav-btn active" data-tab="tab-player">Player</button>
+  <button class="nav-btn" data-tab="tab-sub">Sub & X-Over</button>
+  <button class="nav-btn" data-tab="tab-eq">Live EQ</button>
+  <button class="nav-btn" data-tab="tab-fx">Space FX</button>
+</nav>
+
+<audio id="audioEl" crossorigin="anonymous"></audio>
+
+<script>
+  // Audio Engine State
+  let audioCtx, sourceNode, masterGainNode, analyser, visualizerData, timeDomainData;
+  let eqNodes = [];
+  let subsonicFilter, subLpf1, subLpf2, topsHpf1, topsHpf2;
+  let subPunchFilter, phaseInvertNode, subMonoNode, subGainNode, topsGainNode;
+  let xoverWetGain, xoverBypassGain;
+  let midGain, sideGainL, sideGainR;
+  let echoDelay, echoFeedbackNode, echoToneFilter, echoWetGain;
+  let isInitialized = false;
+  let isRestoring = false;
+  let pendingSeekTime = 0;
+
+  let xoverPowerOn = true;
+  let eqPowerOn = true;
+  let fxPowerOn = true;
+  let subEnabled = true;
+  let topsEnabled = true;
+  let phaseInverted = false;
+  let subMonoEnabled = true;
+  let isMuted = false;
+  let isLooping = false;
+  let lastVolume = 85;
+
+  let playlist = [];
+  let currentIndex = -1;
+
+  const STORAGE_KEY = 'liquid_dsp_settings_v1';
+  const PRESETS_KEY = 'liquid_dsp_presets_v1';
+  const PLAYBACK_KEY = 'liquid_dsp_playback_v1';
+  const DB_NAME = 'LiquidDSP_SongsDB';
+  const STORE_NAME = 'tracks';
+
+  const eqBandsConfig = [
+    { name: 'Low-Mid', type: 'peaking', freq: 250, min: 120, max: 600, gain: 0, q: 1.2 },
+    { name: 'Vocal / Mid', type: 'peaking', freq: 1000, min: 600, max: 2500, gain: 0, q: 1.0 },
+    { name: 'Presence', type: 'peaking', freq: 3500, min: 2500, max: 7000, gain: 0, q: 1.2 },
+    { name: 'Air / Highs', type: 'highshelf', freq: 10000, min: 6000, max: 16000, gain: 0, q: 0.7 }
+  ];
+
+  // DOM References
+  const audioEl = document.getElementById('audioEl');
+  const fileInput = document.getElementById('fileInput');
+  const folderInput = document.getElementById('folderInput');
+  const playBtn = document.getElementById('playBtn');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const loopBtn = document.getElementById('loopBtn');
+  const quickSubBtn = document.getElementById('quickSubBtn');
+  const trackTitleWrap = document.getElementById('trackTitleWrap');
+  const trackTitle = document.getElementById('trackTitle');
+  const trackSub = document.getElementById('trackSub');
+  const queueList = document.getElementById('queueList');
+  const queueCount = document.getElementById('queueCount');
+  const clearQueueBtn = document.getElementById('clearQueueBtn');
+  const progressTrack = document.getElementById('progressTrack');
+  const progressFill = document.getElementById('progressFill');
+  const curTimeEl = document.getElementById('curTime');
+  const durTimeEl = document.getElementById('durTime');
+  const xoverBadge = document.getElementById('xoverBadge');
+  const albumArtEl = document.getElementById('albumArt');
+  const xoverPowerSwitch = document.getElementById('xoverPowerSwitch');
+  const eqPowerSwitch = document.getElementById('eqPowerSwitch');
+  const subDspBody = document.getElementById('subDspBody');
+  const eqDspBody = document.getElementById('eqDspBody');
+  const presetSelect = document.getElementById('presetSelect');
+  const savePresetBtn = document.getElementById('savePresetBtn');
+  const editPresetBtn = document.getElementById('editPresetBtn');
+  const deletePresetBtn = document.getElementById('deletePresetBtn');
+
+  // Auto-Scrolling Marquee Title Helper
+  function setTrackTitle(text) {
+    trackTitle.classList.remove('scrolling');
+    trackTitleWrap.classList.remove('scrolling');
+    trackTitle.style.removeProperty('--marquee-offset');
+    trackTitle.style.removeProperty('--marquee-dur');
+    trackTitle.textContent = text;
+
+    requestAnimationFrame(() => {
+      const overflow = trackTitle.scrollWidth - trackTitleWrap.clientWidth;
+      if (overflow > 4) {
+        const offset = -(overflow + 24);
+        const duration = Math.max(8, Math.min(26, overflow / 18 + 4));
+        trackTitle.style.setProperty('--marquee-offset', `${offset}px`);
+        trackTitle.style.setProperty('--marquee-dur', `${duration.toFixed(1)}s`);
+        trackTitle.classList.add('scrolling');
+        trackTitleWrap.classList.add('scrolling');
+      }
+    });
+  }
+
+  // Extract Extension & Render Track Subtitle with Bitrate
+  function getFileExtension(filename) {
+    const match = filename.match(/\.([^/.]+)$/);
+    return match ? match[1].toUpperCase() : 'AUDIO';
+  }
+
+  function updateTrackSubDisplay(index) {
+    const track = playlist[index];
+    if (!track) return;
+    const bitratePart = track.bitrate ? ` • ${track.bitrate} kbps` : '';
+    trackSub.innerHTML = `<span class="codec-badge">${track.ext}${bitratePart}</span><span>Track ${index + 1} of ${playlist.length} • ${track.size}</span>`;
+  }
+
+  // IndexedDB Helpers for Persisting Loaded Songs (with Quota Handling)
+  function openSongsDB() {
+    return new Promise((resolve, reject) => {
+      if (!window.indexedDB) return reject(new Error('IndexedDB unavailable'));
+      const req = indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { autoIncrement: true });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async function saveFilesToDB(files) {
+    try {
+      const db = await openSongsDB();
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        files.forEach(file => store.add({ file, name: file.name, size: file.size }));
+        tx.oncomplete = () => resolve();
+        tx.onabort = () => reject(tx.error || new Error('QuotaExceededError'));
+        tx.onerror = () => reject(tx.error || new Error('IndexedDB write error'));
+      });
+    } catch (err) {
+      if (err && (err.name === 'QuotaExceededError' || String(err).includes('Quota'))) {
+        alert('Browser storage is full. Songs will play for this session, but could not be saved offline. Tap "Clear" on the queue to free up space.');
+      }
+    }
+  }
+
+  async function loadFilesFromDB() {
+    try {
+      const db = await openSongsDB();
+      return await new Promise((resolve) => {
+        const tx = db.transaction(STORE_NAME, 'readonly');
+        const req = tx.objectStore(STORE_NAME).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      });
+    } catch (_) {
+      return [];
+    }
+  }
+
+  async function clearFilesDB() {
+    try {
+      const db = await openSongsDB();
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).clear();
+    } catch (_) {}
+  }
+
+  function savePlaybackState() {
+    try {
+      localStorage.setItem(PLAYBACK_KEY, JSON.stringify({
+        index: currentIndex,
+        time: audioEl.currentTime || 0,
+        loop: isLooping
+      }));
+    } catch (_) {}
+  }
+
+  // Helper: Update vertical slider glowing fill
+  function syncFill(slider) {
+    const min = parseFloat(slider.min);
+    const max = parseFloat(slider.max);
+    const val = parseFloat(slider.value);
+    const pct = ((val - min) / (max - min)) * 100;
+    slider.style.setProperty('--pct', `${pct}%`);
+  }
+
+  function dbToGain(db) {
+    return Math.pow(10, db / 20);
+  }
+
+  function fmtFreq(hz) {
+    return hz >= 1000 ? `${(hz / 1000).toFixed(1)}k` : `${hz}Hz`;
+  }
+
+  // Offline Album Art Extractor (MP3 ID3v2 & FLAC)
+  async function extractAlbumArt(file) {
+    try {
+      const buf = await file.slice(0, 2 * 1024 * 1024).arrayBuffer();
+      const view = new DataView(buf);
+      const bytes = new Uint8Array(buf);
+
+      // 1. MP3 (ID3v2.3 / ID3v2.4 APIC frame)
+      if (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) {
+        const version = bytes[3];
+        const tagSize = ((bytes[6] & 0x7f) << 21) | ((bytes[7] & 0x7f) << 14) |
+                        ((bytes[8] & 0x7f) << 7) | (bytes[9] & 0x7f);
+        let pos = 10;
+        const limit = Math.min(10 + tagSize, bytes.length - 10);
+
+        while (pos < limit) {
+          const id = String.fromCharCode(bytes[pos], bytes[pos + 1], bytes[pos + 2], bytes[pos + 3]);
+          if (!/^[A-Z0-9]{4}$/.test(id)) break;
+
+          const size = version === 4
+            ? ((bytes[pos + 4] & 0x7f) << 21) | ((bytes[pos + 5] & 0x7f) << 14) |
+              ((bytes[pos + 6] & 0x7f) << 7) | (bytes[pos + 7] & 0x7f)
+            : view.getUint32(pos + 4);
+
+          pos += 10;
+          if (id === 'APIC' && size > 0) {
+            const enc = bytes[pos];
+            let p = pos + 1;
+            let mime = '';
+            while (p < pos + size && bytes[p] !== 0) mime += String.fromCharCode(bytes[p++]);
+            p += 2;
+            if (enc === 1 || enc === 2) {
+              while (p < pos + size - 1 && !(bytes[p] === 0 && bytes[p + 1] === 0)) p += 2;
+              p += 2;
+            } else {
+              while (p < pos + size && bytes[p] !== 0) p++;
+              p++;
+            }
+            const imgBytes = bytes.slice(p, pos + size);
+            return URL.createObjectURL(new Blob([imgBytes], { type: mime || 'image/jpeg' }));
+          }
+          pos += size;
+        }
+      }
+
+      // 2. FLAC (PICTURE metadata block)
+      if (bytes[0] === 0x66 && bytes[1] === 0x4C && bytes[2] === 0x61 && bytes[3] === 0x43) {
+        let pos = 4;
+        while (pos < bytes.length - 4) {
+          const isLast = (bytes[pos] & 0x80) !== 0;
+          const type = bytes[pos] & 0x7F;
+          const len = (bytes[pos + 1] << 16) | (bytes[pos + 2] << 8) | bytes[pos + 3];
+          pos += 4;
+          if (type === 6) {
+            let p = pos + 4;
+            const mimeLen = view.getUint32(p); p += 4;
+            const mime = new TextDecoder().decode(bytes.slice(p, p + mimeLen)); p += mimeLen;
+            const descLen = view.getUint32(p); p += 4 + descLen + 16;
+            const imgLen = view.getUint32(p); p += 4;
+            return URL.createObjectURL(new Blob([bytes.slice(p, p + imgLen)], { type: mime || 'image/jpeg' }));
+          }
+          pos += len;
+          if (isLast) break;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  // Build Vertical Parametric EQ Cards
+  const eqContainer = document.getElementById('eqContainer');
+  eqBandsConfig.forEach((band, idx) => {
+    const card = document.createElement('div');
+    card.className = 'eq-pair-card';
+    card.innerHTML = `
+      <div class="eq-pair-title">${band.name}</div>
+      <div class="eq-pair-faders">
+        <div class="eq-subcol">
+          <span class="ch-val" id="eqFreqVal-${idx}">${fmtFreq(band.freq)}</span>
+          <input type="range" class="v-slider" id="eqFreq-${idx}" min="${band.min}" max="${band.max}" value="${band.freq}" step="10">
+          <span class="ch-name">Freq</span>
+        </div>
+        <div class="eq-subcol">
+          <span class="ch-val eq-txt" id="eqGainVal-${idx}">0.0dB</span>
+          <input type="range" class="v-slider eq-theme" id="eqGain-${idx}" min="-12" max="12" value="${band.gain}" step="0.5">
+          <span class="ch-name">Gain</span>
+        </div>
+      </div>
+    `;
+    eqContainer.appendChild(card);
+  });
+
+  // Initialize fills for all vertical sliders
+  document.querySelectorAll('.v-slider').forEach(syncFill);
+
+  // Bottom Navigation Tabs
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      if (btn.dataset.tab === 'tab-player') resizeVisualizer();
+    });
+  });
+
+  // Space FX (Mid/Side Stereo Widener + Warm Feedback Echo)
+  function setStereoWidth(width) {
+    if (!midGain) return;
+    const w = fxPowerOn ? width : 1.0;
+    midGain.gain.setTargetAtTime(0.5, audioCtx.currentTime, 0.02);
+    sideGainL.gain.setTargetAtTime(0.5 * w, audioCtx.currentTime, 0.02);
+    sideGainR.gain.setTargetAtTime(0.5 * w, audioCtx.currentTime, 0.02);
+  }
+
+  function applySubMonoMode() {
+    if (!subMonoNode) return;
+    if (subMonoEnabled) {
+      subMonoNode.channelCount = 1;
+      subMonoNode.channelCountMode = 'explicit';
+      subMonoNode.channelInterpretation = 'speakers';
+    } else {
+      subMonoNode.channelCount = 2;
+      subMonoNode.channelCountMode = 'max';
+      subMonoNode.channelInterpretation = 'speakers';
+    }
+  }
+
+  function buildSpaceFxChain(inputNode, outputNode) {
+    const splitter = audioCtx.createChannelSplitter(2);
+    const merger = audioCtx.createChannelMerger(2);
+
+    midGain = audioCtx.createGain();
+    sideGainL = audioCtx.createGain();
+    sideGainR = audioCtx.createGain();
+
+    const invR = audioCtx.createGain(); invR.gain.value = -1;
+    const invL = audioCtx.createGain(); invL.gain.value = -1;
+
+    setStereoWidth(parseFloat(stereoWidth.value) / 100);
+
+    inputNode.connect(splitter);
+
+    splitter.connect(midGain, 0);
+    splitter.connect(midGain, 1);
+    midGain.connect(merger, 0, 0);
+    midGain.connect(merger, 0, 1);
+
+    splitter.connect(sideGainL, 0);
+    splitter.connect(invR, 1);
+    invR.connect(sideGainL);
+    sideGainL.connect(merger, 0, 0);
+
+    splitter.connect(sideGainR, 1);
+    splitter.connect(invL, 0);
+    invL.connect(sideGainR);
+    sideGainR.connect(merger, 0, 1);
+
+    echoDelay = audioCtx.createDelay(1.5);
+    echoDelay.delayTime.value = parseFloat(echoTime.value) / 1000;
+
+    echoToneFilter = audioCtx.createBiquadFilter();
+    echoToneFilter.type = 'lowpass';
+    echoToneFilter.frequency.value = 3200;
+
+    echoFeedbackNode = audioCtx.createGain();
+    echoFeedbackNode.gain.value = parseFloat(echoFeedback.value) / 100;
+
+    echoWetGain = audioCtx.createGain();
+    echoWetGain.gain.value = fxPowerOn ? parseFloat(echoMix.value) / 100 : 0;
+
+    merger.connect(outputNode);
+
+    merger.connect(echoDelay);
+    echoDelay.connect(echoToneFilter);
+    echoToneFilter.connect(echoFeedbackNode);
+    echoFeedbackNode.connect(echoDelay);
+    echoToneFilter.connect(echoWetGain);
+    echoWetGain.connect(outputNode);
+  }
+
+  // Web Audio DSP Graph
+  function initAudioEngine() {
+    if (isInitialized) return;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    audioCtx = new AudioContext();
+    sourceNode = audioCtx.createMediaElementSource(audioEl);
+
+    let prevNode = sourceNode;
+    eqBandsConfig.forEach((band, idx) => {
+      const f = audioCtx.createBiquadFilter();
+      f.type = band.type;
+      f.frequency.value = parseFloat(document.getElementById(`eqFreq-${idx}`).value);
+      f.gain.value = eqPowerOn ? parseFloat(document.getElementById(`eqGain-${idx}`).value) : 0;
+      f.Q.value = band.q;
+      prevNode.connect(f);
+      prevNode = f;
+      eqNodes.push(f);
+    });
+
+    xoverWetGain = audioCtx.createGain();
+    xoverWetGain.gain.value = xoverPowerOn ? 1 : 0;
+
+    xoverBypassGain = audioCtx.createGain();
+    xoverBypassGain.gain.value = xoverPowerOn ? 0 : 1;
+
+    subsonicFilter = audioCtx.createBiquadFilter();
+    subsonicFilter.type = 'highpass';
+    subsonicFilter.frequency.value = parseFloat(subsonicFreq.value);
+    subsonicFilter.Q.value = 0.707;
+
+    subLpf1 = audioCtx.createBiquadFilter();
+    subLpf1.type = 'lowpass';
+    subLpf1.frequency.value = parseFloat(xoverFreq.value);
+    subLpf1.Q.value = 0.707;
+
+    subLpf2 = audioCtx.createBiquadFilter();
+    subLpf2.type = 'lowpass';
+    subLpf2.frequency.value = parseFloat(xoverFreq.value);
+    subLpf2.Q.value = 0.707;
+
+    subPunchFilter = audioCtx.createBiquadFilter();
+    subPunchFilter.type = 'peaking';
+    subPunchFilter.frequency.value = parseFloat(subBoostFreq.value);
+    subPunchFilter.gain.value = parseFloat(subBoostGain.value);
+    subPunchFilter.Q.value = 1.8;
+
+    phaseInvertNode = audioCtx.createGain();
+    phaseInvertNode.gain.value = phaseInverted ? -1 : 1;
+
+    // Mono-Sum node for Subwoofer
+    subMonoNode = audioCtx.createGain();
+    subMonoNode.gain.value = 1;
+    applySubMonoMode();
+
+    subGainNode = audioCtx.createGain();
+    subGainNode.gain.value = subEnabled ? dbToGain(parseFloat(subGain.value)) : 0;
+
+    prevNode.connect(subsonicFilter);
+    subsonicFilter.connect(subLpf1);
+    subLpf1.connect(subLpf2);
+    subLpf2.connect(subPunchFilter);
+    subPunchFilter.connect(phaseInvertNode);
+    phaseInvertNode.connect(subMonoNode);
+    subMonoNode.connect(subGainNode);
+    subGainNode.connect(xoverWetGain);
+
+    topsHpf1 = audioCtx.createBiquadFilter();
+    topsHpf1.type = 'highpass';
+    topsHpf1.frequency.value = parseFloat(xoverFreq.value);
+    topsHpf1.Q.value = 0.707;
+
+    topsHpf2 = audioCtx.createBiquadFilter();
+    topsHpf2.type = 'highpass';
+    topsHpf2.frequency.value = parseFloat(xoverFreq.value);
+    topsHpf2.Q.value = 0.707;
+
+    topsGainNode = audioCtx.createGain();
+    topsGainNode.gain.value = topsEnabled ? 1 : 0;
+
+    prevNode.connect(topsHpf1);
+    topsHpf1.connect(topsHpf2);
+    topsHpf2.connect(topsGainNode);
+    buildSpaceFxChain(topsGainNode, xoverWetGain);
+
+    prevNode.connect(xoverBypassGain);
+
+    masterGainNode = audioCtx.createGain();
+    masterGainNode.gain.value = isMuted ? 0 : parseFloat(volSlider.value) / 100;
+
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.82;
+    visualizerData = new Uint8Array(analyser.frequencyBinCount);
+    timeDomainData = new Uint8Array(analyser.frequencyBinCount);
+
+    xoverWetGain.connect(masterGainNode);
+    xoverBypassGain.connect(masterGainNode);
+    masterGainNode.connect(analyser);
+    analyser.connect(audioCtx.destination);
+
+    isInitialized = true;
+    resizeVisualizer();
+    drawVisualizer();
+  }
+
+  // Audio File & Folder Loader
+  const audioExtRegex = /\.(mp3|wav|flac|ogg|m4a|aac|opus|webm|wma)$/i;
+
+  function addFilesToQueue(fileList) {
+    const audioFiles = Array.from(fileList)
+      .filter(f => (f.type && f.type.startsWith('audio/')) || audioExtRegex.test(f.name))
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+    if (!audioFiles.length) return;
+
+    const startIdx = playlist.length;
+    audioFiles.forEach(file => {
+      playlist.push({
+        name: file.name.replace(/\.[^/.]+$/, ''),
+        ext: getFileExtension(file.name),
+        url: URL.createObjectURL(file),
+        byteSize: file.size,
+        size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+        bitrate: null,
+        file,
+        artUrl: null
+      });
+    });
+
+    saveFilesToDB(audioFiles);
+    renderQueue();
+    if (currentIndex === -1) loadTrack(startIdx, true);
+  }
+
+  fileInput.addEventListener('change', (e) => addFilesToQueue(e.target.files));
+  folderInput.addEventListener('change', (e) => addFilesToQueue(e.target.files));
+
+  clearQueueBtn.addEventListener('click', () => {
+    audioEl.pause();
+    audioEl.removeAttribute('src');
+    audioEl.load();
+    playlist.forEach(t => {
+      if (t.url) URL.revokeObjectURL(t.url);
+      if (t.artUrl) URL.revokeObjectURL(t.artUrl);
+    });
+    playlist = [];
+    currentIndex = -1;
+    pendingSeekTime = 0;
+    playBtn.textContent = '▶';
+    setTrackTitle('No Track Loaded');
+    trackSub.textContent = 'Tap "+ Folder" or "+ Songs" to load local audio';
+    progressFill.style.width = '0%';
+    curTimeEl.textContent = '0:00';
+    durTimeEl.textContent = '0:00';
+    albumArtEl.classList.remove('visible');
+    albumArtEl.removeAttribute('src');
+    clearFilesDB();
+    localStorage.removeItem(PLAYBACK_KEY);
+    renderQueue();
+  });
+
+  function renderQueue() {
+    queueCount.textContent = `${playlist.length} track${playlist.length === 1 ? '' : 's'}`;
+    if (!playlist.length) {
+      queueList.innerHTML = '<div class="empty-queue">Select a music folder or individual MP3, FLAC, or WAV files from your phone.</div>';
+      return;
+    }
+
+    queueList.innerHTML = '';
+    playlist.forEach((track, i) => {
+      const item = document.createElement('div');
+      item.className = 'queue-item' + (i === currentIndex ? ' playing' : '');
+      const metaText = track.bitrate ? `${track.ext} • ${track.bitrate}k` : `${track.ext} • ${track.size}`;
+      item.innerHTML = `<span class="queue-name">${i + 1}. ${track.name}</span><span class="queue-meta">${metaText}</span>`;
+      item.addEventListener('click', () => loadTrack(i, true));
+      queueList.appendChild(item);
+    });
+  }
+
+  async function loadTrack(index, autoplay = true, startTime = 0) {
+    if (index < 0 || index >= playlist.length) return;
+    if (autoplay) {
+      initAudioEngine();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+
+    currentIndex = index;
+    pendingSeekTime = startTime || 0;
+    const track = playlist[index];
+    audioEl.src = track.url;
+    setTrackTitle(track.name);
+    updateTrackSubDisplay(index);
+    renderQueue();
+    savePlaybackState();
+
+    if (autoplay) {
+      audioEl.play();
+      playBtn.textContent = '❚❚';
+    } else {
+      playBtn.textContent = '▶';
+    }
+
+    if (!track.artUrl && track.file) {
+      track.artUrl = await extractAlbumArt(track.file);
+    }
+
+    if (track.artUrl) {
+      albumArtEl.src = track.artUrl;
+      albumArtEl.classList.add('visible');
+    } else {
+      albumArtEl.classList.remove('visible');
+      albumArtEl.removeAttribute('src');
+    }
+
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.name,
+        artist: 'Liquid DSP Player',
+        artwork: track.artUrl ? [{ src: track.artUrl, sizes: '512x512', type: 'image/jpeg' }] : []
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => prevTrack());
+      navigator.mediaSession.setActionHandler('nexttrack', () => nextTrack());
+    }
+  }
+
+  function prevTrack() {
+    if (!playlist.length) return;
+    const idx = (currentIndex - 1 + playlist.length) % playlist.length;
+    loadTrack(idx, true);
+  }
+
+  function nextTrack() {
+    if (!playlist.length) return;
+    const idx = (currentIndex + 1) % playlist.length;
+    loadTrack(idx, true);
+  }
+
+  playBtn.addEventListener('click', () => {
+    if (!playlist.length) return;
+    initAudioEngine();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (audioEl.paused) {
+      audioEl.play();
+      playBtn.textContent = '❚❚';
+    } else {
+      audioEl.pause();
+      playBtn.textContent = '▶';
+    }
+  });
+
+  prevBtn.addEventListener('click', prevTrack);
+  nextBtn.addEventListener('click', nextTrack);
+
+  loopBtn.addEventListener('click', () => {
+    isLooping = !isLooping;
+    audioEl.loop = isLooping;
+    loopBtn.classList.toggle('active', isLooping);
+    savePlaybackState();
+  });
+
+  audioEl.addEventListener('ended', () => {
+    if (!isLooping && playlist.length > 1) nextTrack();
+    else if (!isLooping) playBtn.textContent = '▶';
+  });
+
+  // Touch Scrubbing Progress Bar
+  function formatTime(sec) {
+    if (isNaN(sec)) return '0:00';
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  }
+
+  audioEl.addEventListener('loadedmetadata', () => {
+    durTimeEl.textContent = formatTime(audioEl.duration);
+
+    const track = playlist[currentIndex];
+    if (track && audioEl.duration > 0 && track.byteSize > 0) {
+      track.bitrate = Math.round((track.byteSize * 8) / (audioEl.duration * 1000));
+      updateTrackSubDisplay(currentIndex);
+      renderQueue();
+    }
+
+    if (pendingSeekTime > 0 && pendingSeekTime < audioEl.duration) {
+      audioEl.currentTime = pendingSeekTime;
+      const pct = (pendingSeekTime / audioEl.duration) * 100;
+      progressFill.style.width = `${pct}%`;
+      curTimeEl.textContent = formatTime(pendingSeekTime);
+      pendingSeekTime = 0;
+    }
+  });
+
+  let lastSaveTick = 0;
+  audioEl.addEventListener('timeupdate', () => {
+    if (!audioEl.duration) return;
+    const pct = (audioEl.currentTime / audioEl.duration) * 100;
+    progressFill.style.width = `${pct}%`;
+    curTimeEl.textContent = formatTime(audioEl.currentTime);
+    const now = Date.now();
+    if (now - lastSaveTick > 2000) {
+      lastSaveTick = now;
+      savePlaybackState();
+    }
+  });
+
+  audioEl.addEventListener('pause', savePlaybackState);
+  window.addEventListener('beforeunload', savePlaybackState);
+
+  let isScrubbing = false;
+  function scrubAt(clientX) {
+    if (!audioEl.duration) return;
+    const rect = progressTrack.getBoundingClientRect();
+    const ratio = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width));
+    audioEl.currentTime = ratio * audioEl.duration;
+    progressFill.style.width = `${ratio * 100}%`;
+  }
+
+  progressTrack.addEventListener('pointerdown', (e) => {
+    isScrubbing = true;
+    progressTrack.setPointerCapture(e.pointerId);
+    scrubAt(e.clientX);
+  });
+  progressTrack.addEventListener('pointermove', (e) => { if (isScrubbing) scrubAt(e.clientX); });
+  progressTrack.addEventListener('pointerup', () => { isScrubbing = false; savePlaybackState(); });
+
+  // Vertical Master Volume Control
+  const volSlider = document.getElementById('volSlider');
+  const volVal = document.getElementById('volVal');
+  const muteBtn = document.getElementById('muteBtn');
+
+  function applyVolume(v) {
+    volVal.textContent = `${v}%`;
+    muteBtn.textContent = v === 0 ? '🔇' : v < 45 ? '🔉' : '🔊';
+    if (isInitialized) {
+      masterGainNode.gain.setTargetAtTime(v / 100, audioCtx.currentTime, 0.015);
+    }
+  }
+
+  volSlider.addEventListener('input', (e) => {
+    const v = parseInt(e.target.value, 10);
+    isMuted = v === 0;
+    if (v > 0) lastVolume = v;
+    syncFill(volSlider);
+    applyVolume(v);
+    saveSettings();
+  });
+
+  muteBtn.addEventListener('click', () => {
+    isMuted = !isMuted;
+    volSlider.value = isMuted ? 0 : (lastVolume || 80);
+    syncFill(volSlider);
+    applyVolume(parseInt(volSlider.value, 10));
+    saveSettings();
+  });
+
+  // Master On/Off Switches for Sub & X-Over and Live EQ
+  xoverPowerSwitch.addEventListener('change', () => {
+    xoverPowerOn = xoverPowerSwitch.checked;
+    subDspBody.classList.toggle('bypassed', !xoverPowerOn);
+    xoverBadge.textContent = xoverPowerOn ? `24dB • ${xoverFreq.value} Hz` : 'X-OVER • OFF';
+    if (isInitialized) {
+      xoverWetGain.gain.setTargetAtTime(xoverPowerOn ? 1 : 0, audioCtx.currentTime, 0.02);
+      xoverBypassGain.gain.setTargetAtTime(xoverPowerOn ? 0 : 1, audioCtx.currentTime, 0.02);
+    }
+    saveSettings();
+  });
+
+  eqPowerSwitch.addEventListener('change', () => {
+    eqPowerOn = eqPowerSwitch.checked;
+    eqDspBody.classList.toggle('bypassed', !eqPowerOn);
+    if (isInitialized) {
+      eqBandsConfig.forEach((_, idx) => {
+        const g = eqPowerOn ? parseFloat(document.getElementById(`eqGain-${idx}`).value) : 0;
+        eqNodes[idx].gain.setTargetAtTime(g, audioCtx.currentTime, 0.02);
+      });
+    }
+    saveSettings();
+  });
+
+  // Crossover & Subwoofer Vertical Faders
+  const xoverFreq = document.getElementById('xoverFreq');
+  const xoverVal = document.getElementById('xoverVal');
+  xoverFreq.addEventListener('input', (e) => {
+    const f = parseFloat(e.target.value);
+    syncFill(e.target);
+    xoverVal.textContent = `${f}Hz`;
+    if (xoverPowerOn) xoverBadge.textContent = `24dB • ${f} Hz`;
+    if (isInitialized) {
+      subLpf1.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.015);
+      subLpf2.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.015);
+      topsHpf1.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.015);
+      topsHpf2.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.015);
+    }
+    saveSettings();
+  });
+
+  const subGain = document.getElementById('subGain');
+  const subGainVal = document.getElementById('subGainVal');
+  subGain.addEventListener('input', (e) => {
+    const db = parseFloat(e.target.value);
+    syncFill(e.target);
+    subGainVal.textContent = `${db > 0 ? '+' : ''}${db.toFixed(1)}dB`;
+    if (isInitialized && subEnabled) {
+      subGainNode.gain.setTargetAtTime(dbToGain(db), audioCtx.currentTime, 0.02);
+    }
+    saveSettings();
+  });
+
+  const subBoostFreq = document.getElementById('subBoostFreq');
+  const subBoostFreqVal = document.getElementById('subBoostFreqVal');
+  subBoostFreq.addEventListener('input', (e) => {
+    const f = parseFloat(e.target.value);
+    syncFill(e.target);
+    subBoostFreqVal.textContent = `${f}Hz`;
+    if (isInitialized) subPunchFilter.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
+    saveSettings();
+  });
+
+  const subBoostGain = document.getElementById('subBoostGain');
+  const subBoostGainVal = document.getElementById('subBoostGainVal');
+  subBoostGain.addEventListener('input', (e) => {
+    const g = parseFloat(e.target.value);
+    syncFill(e.target);
+    subBoostGainVal.textContent = `+${g.toFixed(1)}dB`;
+    if (isInitialized) subPunchFilter.gain.setTargetAtTime(g, audioCtx.currentTime, 0.02);
+    saveSettings();
+  });
+
+  const subsonicFreq = document.getElementById('subsonicFreq');
+  const subsonicVal = document.getElementById('subsonicVal');
+  subsonicFreq.addEventListener('input', (e) => {
+    const f = parseFloat(e.target.value);
+    syncFill(e.target);
+    subsonicVal.textContent = `${f}Hz`;
+    if (isInitialized) subsonicFilter.frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
+    saveSettings();
+  });
+
+  // Sub / Tops / Phase / Sub Mono Toggles
+  const subEnableBtn = document.getElementById('subEnableBtn');
+  const topsEnableBtn = document.getElementById('topsEnableBtn');
+  const phaseBtn = document.getElementById('phaseBtn');
+  const subMonoBtn = document.getElementById('subMonoBtn');
+
+  function toggleSub() {
+    subEnabled = !subEnabled;
+    subEnableBtn.textContent = subEnabled ? 'SUB: ON' : 'SUB: MUTE';
+    subEnableBtn.classList.toggle('active-sub', subEnabled);
+    quickSubBtn.classList.toggle('active', subEnabled);
+    document.getElementById('quickSubState').textContent = subEnabled ? 'ON' : 'OFF';
+    if (isInitialized) {
+      const target = subEnabled ? dbToGain(parseFloat(subGain.value)) : 0;
+      subGainNode.gain.setTargetAtTime(target, audioCtx.currentTime, 0.02);
+    }
+    saveSettings();
+  }
+  quickSubBtn.classList.add('active');
+  subEnableBtn.addEventListener('click', toggleSub);
+  quickSubBtn.addEventListener('click', toggleSub);
+
+  topsEnableBtn.addEventListener('click', () => {
+    topsEnabled = !topsEnabled;
+    topsEnableBtn.textContent = topsEnabled ? 'TOPS: ON' : 'TOPS: MUTE';
+    topsEnableBtn.classList.toggle('active-cyan', topsEnabled);
+    if (isInitialized) {
+      topsGainNode.gain.setTargetAtTime(topsEnabled ? 1 : 0, audioCtx.currentTime, 0.02);
+    }
+    saveSettings();
+  });
+
+  phaseBtn.addEventListener('click', () => {
+    phaseInverted = !phaseInverted;
+    phaseBtn.textContent = phaseInverted ? 'PHASE: 180°' : 'PHASE: 0°';
+    phaseBtn.classList.toggle('active-sub', phaseInverted);
+    if (isInitialized) {
+      phaseInvertNode.gain.setTargetAtTime(phaseInverted ? -1 : 1, audioCtx.currentTime, 0.01);
+    }
+    saveSettings();
+  });
+
+  subMonoBtn.addEventListener('click', () => {
+    subMonoEnabled = !subMonoEnabled;
+    subMonoBtn.textContent = subMonoEnabled ? 'SUB MONO: ON' : 'SUB MONO: OFF';
+    subMonoBtn.classList.toggle('active-sub', subMonoEnabled);
+    applySubMonoMode();
+    saveSettings();
+  });
+
+  document.getElementById('resetSub').addEventListener('click', () => {
+    xoverFreq.value = 80; xoverFreq.dispatchEvent(new Event('input'));
+    subGain.value = 0; subGain.dispatchEvent(new Event('input'));
+    subBoostFreq.value = 45; subBoostFreq.dispatchEvent(new Event('input'));
+    subBoostGain.value = 0; subBoostGain.dispatchEvent(new Event('input'));
+    subsonicFreq.value = 25; subsonicFreq.dispatchEvent(new Event('input'));
+  });
+
+  // Live EQ Vertical Fader Listeners
+  eqBandsConfig.forEach((band, idx) => {
+    const fSlider = document.getElementById(`eqFreq-${idx}`);
+    const gSlider = document.getElementById(`eqGain-${idx}`);
+    const fVal = document.getElementById(`eqFreqVal-${idx}`);
+    const gVal = document.getElementById(`eqGainVal-${idx}`);
+
+    function updateBand() {
+      const f = parseFloat(fSlider.value);
+      const g = parseFloat(gSlider.value);
+      syncFill(fSlider);
+      syncFill(gSlider);
+      fVal.textContent = fmtFreq(f);
+      gVal.textContent = `${g > 0 ? '+' : ''}${g.toFixed(1)}dB`;
+      if (isInitialized) {
+        eqNodes[idx].frequency.setTargetAtTime(f, audioCtx.currentTime, 0.02);
+        eqNodes[idx].gain.setTargetAtTime(eqPowerOn ? g : 0, audioCtx.currentTime, 0.02);
+      }
+      saveSettings();
+    }
+
+    fSlider.addEventListener('input', updateBand);
+    gSlider.addEventListener('input', updateBand);
+  });
+
+  document.getElementById('resetEq').addEventListener('click', () => {
+    eqBandsConfig.forEach((band, idx) => {
+      const fSlider = document.getElementById(`eqFreq-${idx}`);
+      const gSlider = document.getElementById(`eqGain-${idx}`);
+      fSlider.value = band.freq;
+      gSlider.value = 0;
+      gSlider.dispatchEvent(new Event('input'));
+    });
+  });
+
+  // Stereo & Echo FX Vertical Fader Listeners
+  const stereoWidth = document.getElementById('stereoWidth');
+  const echoTime = document.getElementById('echoTime');
+  const echoFeedback = document.getElementById('echoFeedback');
+  const echoMix = document.getElementById('echoMix');
+  const fxPowerSwitch = document.getElementById('fxPowerSwitch');
+
+  stereoWidth.addEventListener('input', (e) => {
+    const pct = parseFloat(e.target.value);
+    syncFill(e.target);
+    document.getElementById('stereoWidthVal').textContent = `${pct}%`;
+    setStereoWidth(pct / 100);
+    saveSettings();
+  });
+
+  echoTime.addEventListener('input', (e) => {
+    const ms = parseFloat(e.target.value);
+    syncFill(e.target);
+    document.getElementById('echoTimeVal').textContent = `${ms}ms`;
+    if (echoDelay) echoDelay.delayTime.setTargetAtTime(ms / 1000, audioCtx.currentTime, 0.03);
+    saveSettings();
+  });
+
+  echoFeedback.addEventListener('input', (e) => {
+    const pct = parseFloat(e.target.value);
+    syncFill(e.target);
+    document.getElementById('echoFeedbackVal').textContent = `${pct}%`;
+    if (echoFeedbackNode) echoFeedbackNode.gain.setTargetAtTime(pct / 100, audioCtx.currentTime, 0.02);
+    saveSettings();
+  });
+
+  echoMix.addEventListener('input', (e) => {
+    const pct = parseFloat(e.target.value);
+    syncFill(e.target);
+    document.getElementById('echoMixVal').textContent = `${pct}%`;
+    if (echoWetGain && fxPowerOn) {
+      echoWetGain.gain.setTargetAtTime(pct / 100, audioCtx.currentTime, 0.02);
+    }
+    saveSettings();
+  });
+
+  fxPowerSwitch.addEventListener('change', () => {
+    fxPowerOn = fxPowerSwitch.checked;
+    document.getElementById('fxDspBody').classList.toggle('bypassed', !fxPowerOn);
+    setStereoWidth(parseFloat(stereoWidth.value) / 100);
+    if (echoWetGain) {
+      const mix = fxPowerOn ? parseFloat(echoMix.value) / 100 : 0;
+      echoWetGain.gain.setTargetAtTime(mix, audioCtx.currentTime, 0.02);
+    }
+    saveSettings();
+  });
+
+  document.getElementById('resetFx').addEventListener('click', () => {
+    stereoWidth.value = 100; stereoWidth.dispatchEvent(new Event('input'));
+    echoTime.value = 280; echoTime.dispatchEvent(new Event('input'));
+    echoFeedback.value = 30; echoFeedback.dispatchEvent(new Event('input'));
+    echoMix.value = 0; echoMix.dispatchEvent(new Event('input'));
+  });
+
+  // Auto-Save & Named Presets (localStorage)
+  function captureState() {
+    return {
+      vol: volSlider.value,
+      xoverPowerOn,
+      eqPowerOn,
+      fxPowerOn,
+      subEnabled,
+      topsEnabled,
+      phaseInverted,
+      subMonoEnabled,
+      xoverFreq: xoverFreq.value,
+      subGain: subGain.value,
+      subBoostFreq: subBoostFreq.value,
+      subBoostGain: subBoostGain.value,
+      subsonicFreq: subsonicFreq.value,
+      stereoWidth: stereoWidth.value,
+      echoTime: echoTime.value,
+      echoFeedback: echoFeedback.value,
+      echoMix: echoMix.value,
+      eq: eqBandsConfig.map((_, i) => ({
+        freq: document.getElementById(`eqFreq-${i}`).value,
+        gain: document.getElementById(`eqGain-${i}`).value
+      }))
+    };
+  }
+
+  function applyState(s) {
+    if (!s) return;
+    isRestoring = true;
+    const setSlider = (el, val) => {
+      if (val !== undefined && el) {
+        el.value = val;
+        el.dispatchEvent(new Event('input'));
+      }
+    };
+
+    setSlider(volSlider, s.vol);
+    setSlider(xoverFreq, s.xoverFreq);
+    setSlider(subGain, s.subGain);
+    setSlider(subBoostFreq, s.subBoostFreq);
+    setSlider(subBoostGain, s.subBoostGain);
+    setSlider(subsonicFreq, s.subsonicFreq);
+    setSlider(stereoWidth, s.stereoWidth);
+    setSlider(echoTime, s.echoTime);
+    setSlider(echoFeedback, s.echoFeedback);
+    setSlider(echoMix, s.echoMix);
+
+    if (Array.isArray(s.eq)) {
+      s.eq.forEach((b, i) => {
+        setSlider(document.getElementById(`eqFreq-${i}`), b.freq);
+        setSlider(document.getElementById(`eqGain-${i}`), b.gain);
+      });
+    }
+
+    if (s.xoverPowerOn !== undefined) {
+      xoverPowerSwitch.checked = s.xoverPowerOn;
+      xoverPowerSwitch.dispatchEvent(new Event('change'));
+    }
+    if (s.eqPowerOn !== undefined) {
+      eqPowerSwitch.checked = s.eqPowerOn;
+      eqPowerSwitch.dispatchEvent(new Event('change'));
+    }
+    if (s.fxPowerOn !== undefined) {
+      fxPowerSwitch.checked = s.fxPowerOn;
+      fxPowerSwitch.dispatchEvent(new Event('change'));
+    }
+
+    if (s.subEnabled !== undefined && s.subEnabled !== subEnabled) toggleSub();
+    if (s.topsEnabled !== undefined && s.topsEnabled !== topsEnabled) topsEnableBtn.click();
+    if (s.phaseInverted !== undefined && s.phaseInverted !== phaseInverted) phaseBtn.click();
+    if (s.subMonoEnabled !== undefined && s.subMonoEnabled !== subMonoEnabled) subMonoBtn.click();
+    isRestoring = false;
+  }
+
+  function saveSettings() {
+    if (isRestoring) return;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(captureState()));
+    } catch (_) {}
+  }
+
+  function loadSettings() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) applyState(JSON.parse(raw));
+    } catch (_) {}
+  }
+
+  function getPresets() {
+    try {
+      return JSON.parse(localStorage.getItem(PRESETS_KEY) || '{}');
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function renderPresetOptions(selectedName = '') {
+    const presets = getPresets();
+    presetSelect.innerHTML = '<option value="">-- Load Preset --</option>';
+    Object.keys(presets).sort().forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      if (name === selectedName) opt.selected = true;
+      presetSelect.appendChild(opt);
+    });
+  }
+
+  savePresetBtn.addEventListener('click', () => {
+    const name = prompt('Enter new preset name:');
+    if (!name || !name.trim()) return;
+    const clean = name.trim();
+    const presets = getPresets();
+    presets[clean] = captureState();
+    try {
+      localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+    } catch (_) {}
+    renderPresetOptions(clean);
+  });
+
+  editPresetBtn.addEventListener('click', () => {
+    const oldName = presetSelect.value;
+    if (!oldName) {
+      alert('Select a preset first to edit.');
+      return;
+    }
+    const newName = prompt('Update preset with current settings. Rename or keep name:', oldName);
+    if (!newName || !newName.trim()) return;
+    const clean = newName.trim();
+    const presets = getPresets();
+    if (clean !== oldName) delete presets[oldName];
+    presets[clean] = captureState();
+    try {
+      localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+    } catch (_) {}
+    renderPresetOptions(clean);
+  });
+
+  presetSelect.addEventListener('change', () => {
+    const name = presetSelect.value;
+    if (!name) return;
+    const presets = getPresets();
+    if (presets[name]) {
+      applyState(presets[name]);
+      saveSettings();
+    }
+  });
+
+  deletePresetBtn.addEventListener('click', () => {
+    const name = presetSelect.value;
+    if (!name) return;
+    if (!confirm(`Delete preset "${name}"?`)) return;
+    const presets = getPresets();
+    delete presets[name];
+    try {
+      localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+    } catch (_) {}
+    renderPresetOptions();
+  });
+
+  // Restore Saved Songs & Last Playback State on Startup
+  async function restoreSavedSongs() {
+    const saved = await loadFilesFromDB();
+    if (!saved.length) return;
+
+    saved.forEach(item => {
+      if (!item.file) return;
+      playlist.push({
+        name: item.name.replace(/\.[^/.]+$/, ''),
+        ext: getFileExtension(item.name),
+        url: URL.createObjectURL(item.file),
+        byteSize: item.size,
+        size: (item.size / (1024 * 1024)).toFixed(1) + ' MB',
+        bitrate: null,
+        file: item.file,
+        artUrl: null
+      });
+    });
+
+    renderQueue();
+
+    try {
+      const pb = JSON.parse(localStorage.getItem(PLAYBACK_KEY) || '{}');
+      if (pb.loop) {
+        isLooping = true;
+        audioEl.loop = true;
+        loopBtn.classList.add('active');
+      }
+      const idx = (pb.index >= 0 && pb.index < playlist.length) ? pb.index : 0;
+      loadTrack(idx, false, pb.time || 0);
+    } catch (_) {
+      loadTrack(0, false, 0);
+    }
+  }
+
+  renderPresetOptions();
+  loadSettings();
+  restoreSavedSongs();
+
+  // Desktop Mouse Wheel on DSP Tabs, Faders, Keyboard & Drag-and-Drop
+  ['tab-sub', 'tab-eq', 'tab-fx'].forEach(tabId => {
+    const panel = document.getElementById(tabId);
+    if (!panel) return;
+    panel.addEventListener('wheel', (e) => {
+      if (e.target.closest('.v-slider')) return;
+      if (panel.scrollHeight > panel.clientHeight) {
+        panel.scrollTop += e.deltaY;
+        e.preventDefault();
+      }
+    }, { passive: false });
+  });
+
+  document.querySelectorAll('.v-slider').forEach(slider => {
+    const defaultVal = slider.defaultValue;
+
+    slider.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const step = parseFloat(slider.step) || 1;
+      const dir = e.deltaY < 0 ? 1 : -1;
+      const next = Math.min(parseFloat(slider.max), Math.max(parseFloat(slider.min), parseFloat(slider.value) + dir * step));
+      slider.value = next;
+      slider.dispatchEvent(new Event('input'));
+    }, { passive: false });
+
+    slider.addEventListener('dblclick', () => {
+      slider.value = defaultVal;
+      slider.dispatchEvent(new Event('input'));
+    });
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      playBtn.click();
+    } else if (e.code === 'ArrowRight' && audioEl.duration) {
+      audioEl.currentTime = Math.min(audioEl.duration, audioEl.currentTime + 5);
+    } else if (e.code === 'ArrowLeft' && audioEl.duration) {
+      audioEl.currentTime = Math.max(0, audioEl.currentTime - 5);
+    } else if (e.code === 'ArrowUp') {
+      e.preventDefault();
+      volSlider.value = Math.min(100, parseInt(volSlider.value, 10) + 5);
+      volSlider.dispatchEvent(new Event('input'));
+    } else if (e.code === 'ArrowDown') {
+      e.preventDefault();
+      volSlider.value = Math.max(0, parseInt(volSlider.value, 10) - 5);
+      volSlider.dispatchEvent(new Event('input'));
+    } else if (e.key.toLowerCase() === 'm') {
+      muteBtn.click();
+    }
+  });
+
+  document.body.addEventListener('dragover', (e) => e.preventDefault());
+  document.body.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (e.dataTransfer?.files?.length) addFilesToQueue(e.dataTransfer.files);
+  });
+
+  // Multi-Mode Visualizer (Tap to Cycle)
+  const canvas = document.getElementById('visualizer');
+  const ctx = canvas.getContext('2d');
+  let canvasDpr = window.devicePixelRatio || 1;
+
+  let currentVizMode = 0;
+  const totalVizModes = 7; // 0: Liquid Bars, 1: Winamp Bands, 2: Waveform Flow, 3: Geometric Cascade, 4: Radial Spectrum Ring, 5: Particle Pulse Field, 6: 3D Terrain Wave
+  const winampPeaks = new Array(24).fill(0);
+  let cascadeAngle = 0;
+  let terrainOffset = 0;
+
+  const pulseParticles = Array.from({ length: 85 }, () => ({
+    angle: Math.random() * Math.PI * 2,
+    dist: Math.random(),
+    speed: 0.004 + Math.random() * 0.008,
+    size: 1.2 + Math.random() * 2.2,
+    hue: [185, 270, 340][Math.floor(Math.random() * 3)]
+  }));
+
+  canvas.parentElement.addEventListener('click', () => {
+    currentVizMode = (currentVizMode + 1) % totalVizModes;
+  });
+
+  function resizeVisualizer() {
+    canvasDpr = window.devicePixelRatio || 1;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    if (w > 0 && h > 0) {
+      canvas.width = Math.round(w * canvasDpr);
+      canvas.height = Math.round(h * canvasDpr);
+    }
+  }
+
+  window.addEventListener('resize', () => {
+    resizeVisualizer();
+    if (trackTitle.textContent) setTrackTitle(trackTitle.textContent);
+  });
+  resizeVisualizer();
+
+  function drawLiquidBars() {
+    const bars = 40;
+    const step = Math.floor(visualizerData.length / bars);
+    const gap = 4 * canvasDpr;
+    const barW = (canvas.width - gap * (bars + 1)) / bars;
+
+    for (let i = 0; i < bars; i++) {
+      const val = visualizerData[i * step] / 255;
+      const barH = Math.max(6 * canvasDpr, val * (canvas.height * 0.82));
+      const x = gap + i * (barW + gap);
+      const y = canvas.height - barH - 8 * canvasDpr;
+
+      const grad = ctx.createLinearGradient(0, canvas.height, 0, y);
+      if (i < 6) {
+        grad.addColorStop(0, 'rgba(255, 92, 124, 0.95)');
+        grad.addColorStop(1, 'rgba(255, 160, 120, 0.9)');
+      } else {
+        grad.addColorStop(0, 'rgba(123, 66, 255, 0.85)');
+        grad.addColorStop(1, 'rgba(77, 240, 255, 0.95)');
+      }
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.roundRect(x, y, barW, barH, 6 * canvasDpr);
+      ctx.fill();
+    }
+  }
+
+  function drawWinampBands() {
+    const bands = 24;
+    const segs = 16;
+    const step = Math.floor(visualizerData.length / bands);
+    const gapX = 3 * canvasDpr;
+    const padY = 10 * canvasDpr;
+    const usableH = canvas.height - padY * 2;
+    const bandW = (canvas.width - gapX * (bands + 1)) / bands;
+    const segGap = 2 * canvasDpr;
+    const segH = (usableH - segGap * (segs - 1)) / segs;
+
+    for (let i = 0; i < bands; i++) {
+      const val = visualizerData[i * step] / 255;
+      const litSegs = Math.round(val * segs);
+      if (litSegs >= winampPeaks[i]) {
+        winampPeaks[i] = litSegs;
+      } else {
+        winampPeaks[i] = Math.max(0, winampPeaks[i] - 0.14);
+      }
+
+      const x = gapX + i * (bandW + gapX);
+
+      for (let s = 0; s < litSegs; s++) {
+        const y = canvas.height - padY - (s + 1) * segH - s * segGap;
+        const ratio = s / segs;
+        if (ratio > 0.78) ctx.fillStyle = '#ff3b5c';
+        else if (ratio > 0.5) ctx.fillStyle = '#ffd54f';
+        else ctx.fillStyle = '#3dff8b';
+        ctx.fillRect(x, y, bandW, segH);
+      }
+
+      const peakIdx = Math.min(segs - 1, Math.floor(winampPeaks[i]));
+      if (winampPeaks[i] > 0.3) {
+        const py = canvas.height - padY - (peakIdx + 1) * segH - peakIdx * segGap;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, py, bandW, Math.max(2 * canvasDpr, segH * 0.6));
+      }
+    }
+  }
+
+  function drawWaveformFlow() {
+    analyser.getByteTimeDomainData(timeDomainData);
+    const w = canvas.width;
+    const h = canvas.height;
+    const midY = h * 0.52;
+    const layers = [
+      { color: 'rgba(77, 240, 255, 0.92)', scale: 0.42, phase: 0, width: 2.6 },
+      { color: 'rgba(166, 130, 255, 0.72)', scale: 0.32, phase: 6, width: 2.0 },
+      { color: 'rgba(255, 92, 124, 0.62)', scale: 0.24, phase: 14, width: 1.6 }
+    ];
+
+    ctx.save();
+    layers.forEach(layer => {
+      ctx.beginPath();
+      ctx.lineWidth = layer.width * canvasDpr;
+      ctx.strokeStyle = layer.color;
+      ctx.shadowBlur = 12 * canvasDpr;
+      ctx.shadowColor = layer.color;
+
+      const len = timeDomainData.length;
+      const sliceW = w / (len - 1);
+
+      for (let i = 0; i < len; i++) {
+        const idx = (i + layer.phase) % len;
+        const v = (timeDomainData[idx] - 128) / 128;
+        const x = i * sliceW;
+        const y = midY + v * h * layer.scale;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function drawGeometricCascade() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const maxR = Math.min(w, h) * 0.46;
+
+    let bass = 0;
+    for (let i = 0; i < 8; i++) bass += visualizerData[i];
+    bass = (bass / 8) / 255;
+
+    cascadeAngle += 0.008 + bass * 0.03;
+
+    const layers = 7;
+    const sides = 6;
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    for (let l = layers; l >= 1; l--) {
+      const binIdx = Math.min(visualizerData.length - 1, l * 8);
+      const energy = visualizerData[binIdx] / 255;
+      const radius = (l / layers) * maxR * (0.65 + energy * 0.55);
+      const rot = cascadeAngle * (l % 2 === 0 ? 1 : -1) + l * 0.28;
+
+      ctx.beginPath();
+      for (let s = 0; s <= sides; s++) {
+        const a = rot + (s / sides) * Math.PI * 2;
+        const px = Math.cos(a) * radius;
+        const py = Math.sin(a) * radius;
+        if (s === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+
+      const hue = (185 + l * 24 + bass * 45) % 360;
+      ctx.strokeStyle = `hsla(${hue}, 95%, 65%, ${0.28 + energy * 0.72})`;
+      ctx.lineWidth = (1.4 + energy * 2.4) * canvasDpr;
+      ctx.shadowBlur = 10 * canvasDpr;
+      ctx.shadowColor = `hsla(${hue}, 95%, 65%, 0.65)`;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawRadialSpectrumRing() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+
+    let bass = 0;
+    for (let i = 0; i < 6; i++) bass += visualizerData[i];
+    bass = (bass / 6) / 255;
+
+    const baseR = Math.min(w, h) * (0.23 + bass * 0.045);
+    const maxBar = Math.min(w, h) * 0.21;
+    const bars = 64;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+
+    // Glowing inner ring
+    ctx.beginPath();
+    ctx.arc(0, 0, baseR, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(77, 240, 255, 0.75)';
+    ctx.lineWidth = 2 * canvasDpr;
+    ctx.shadowBlur = 14 * canvasDpr;
+    ctx.shadowColor = 'rgba(77, 240, 255, 0.85)';
+    ctx.stroke();
+
+    for (let i = 0; i < bars; i++) {
+      const binIdx = Math.floor((i / bars) * (visualizerData.length * 0.75));
+      const val = visualizerData[binIdx] / 255;
+      const barLen = Math.max(3 * canvasDpr, val * maxBar);
+      const angle = (i / bars) * Math.PI * 2 - Math.PI / 2;
+
+      const x1 = Math.cos(angle) * (baseR + 3 * canvasDpr);
+      const y1 = Math.sin(angle) * (baseR + 3 * canvasDpr);
+      const x2 = Math.cos(angle) * (baseR + 3 * canvasDpr + barLen);
+      const y2 = Math.sin(angle) * (baseR + 3 * canvasDpr + barLen);
+
+      const hue = (185 + (i / bars) * 165) % 360;
+      ctx.strokeStyle = `hsla(${hue}, 95%, 65%, 0.92)`;
+      ctx.lineWidth = 2.6 * canvasDpr;
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 8 * canvasDpr;
+      ctx.shadowColor = `hsla(${hue}, 95%, 65%, 0.7)`;
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  function drawParticlePulseField() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
+    const maxDist = Math.hypot(cx, cy);
+
+    let bass = 0;
+    for (let i = 0; i < 8; i++) bass += visualizerData[i];
+    bass = (bass / 8) / 255;
+
+    ctx.save();
+
+    // Central pulsing core
+    const coreR = (10 + bass * 24) * canvasDpr;
+    const coreGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, coreR * 2.2);
+    coreGrad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+    coreGrad.addColorStop(0.35, 'rgba(77, 240, 255, 0.75)');
+    coreGrad.addColorStop(0.7, 'rgba(166, 130, 255, 0.3)');
+    coreGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = coreGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, coreR * 2.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Radiating particles & warp streaks
+    pulseParticles.forEach(p => {
+      const prevDist = p.dist;
+      p.dist += p.speed * (0.6 + bass * 4.2);
+      if (p.dist > 1.05) {
+        p.dist = 0.02 + Math.random() * 0.08;
+        p.angle = Math.random() * Math.PI * 2;
+      }
+
+      const r1 = prevDist * maxDist;
+      const r2 = p.dist * maxDist;
+      const x1 = cx + Math.cos(p.angle) * r1;
+      const y1 = cy + Math.sin(p.angle) * r1;
+      const x2 = cx + Math.cos(p.angle) * r2;
+      const y2 = cy + Math.sin(p.angle) * r2;
+
+      const alpha = Math.min(1, p.dist * 1.6) * (0.45 + bass * 0.55);
+      ctx.strokeStyle = `hsla(${p.hue}, 95%, 68%, ${alpha})`;
+      ctx.lineWidth = p.size * (0.5 + p.dist) * canvasDpr;
+      ctx.lineCap = 'round';
+
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  function draw3DTerrainWave() {
+    const w = canvas.width;
+    const h = canvas.height;
+    const cx = w / 2;
+    const horizonY = h * 0.36;
+
+    let bass = 0;
+    for (let i = 0; i < 6; i++) bass += visualizerData[i];
+    bass = (bass / 6) / 255;
+
+    terrainOffset = (terrainOffset + 0.04 + bass * 0.09) % 1;
+
+    ctx.save();
+
+    // Retro horizon sun
+    const sunR = Math.min(w, h) * 0.17;
+    const sunGrad = ctx.createLinearGradient(cx, horizonY - sunR, cx, horizonY + sunR * 0.4);
+    sunGrad.addColorStop(0, 'rgba(77, 240, 255, 0.75)');
+    sunGrad.addColorStop(1, 'rgba(255, 92, 124, 0.55)');
+    ctx.fillStyle = sunGrad;
+    ctx.beginPath();
+    ctx.arc(cx, horizonY, sunR, Math.PI, 0);
+    ctx.fill();
+
+    // Perspective 3D wireframe terrain
+    const cols = 18;
+    const rows = 12;
+    const fov = 1.6;
+    const grid = [];
+
+    for (let r = 0; r < rows; r++) {
+      const z = (rows - r - terrainOffset) / rows;
+      const depth = Math.max(0.08, z);
+      const scale = fov / (depth * 3.2 + 0.35);
+      const rowPts = [];
+
+      for (let c = 0; c <= cols; c++) {
+        const nx = (c / cols) * 2 - 1; // -1 to 1
+        const valley = Math.pow(Math.abs(nx), 1.8); // flat center, peaks on sides
+        const binIdx = Math.min(visualizerData.length - 1, Math.floor(Math.abs(nx) * 42) + r * 2);
+        const audioAmp = (visualizerData[binIdx] / 255) * valley * 0.55;
+        const ridge = Math.sin(c * 1.1 + r * 0.6) * 0.08 * valley;
+        const elev = (audioAmp + ridge) * h * 0.52;
+
+        const sx = cx + nx * w * 0.58 * scale;
+        const sy = horizonY + (h * 0.18 * scale) - elev * scale;
+        rowPts.push({ x: sx, y: sy, depth });
+      }
+      grid.push(rowPts);
+    }
+
+    ctx.lineWidth = 1.2 * canvasDpr;
+
+    // Horizontal terrain lines
+    for (let r = 0; r < rows; r++) {
+      const alpha = 0.25 + (r / rows) * 0.75;
+      ctx.strokeStyle = r % 2 === 0
+        ? `rgba(77, 240, 255, ${alpha})`
+        : `rgba(255, 92, 124, ${alpha})`;
+      ctx.beginPath();
+      for (let c = 0; c <= cols; c++) {
+        const pt = grid[r][c];
+        if (c === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+    }
+
+    // Vertical receding lines
+    ctx.strokeStyle = 'rgba(166, 130, 255, 0.45)';
+    for (let c = 0; c <= cols; c++) {
+      ctx.beginPath();
+      for (let r = 0; r < rows; r++) {
+        const pt = grid[r][c];
+        if (r === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  function drawVisualizer() {
+    requestAnimationFrame(drawVisualizer);
+    if (!analyser || !visualizerData) return;
+
+    analyser.getByteFrequencyData(visualizerData);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (currentVizMode === 0) drawLiquidBars();
+    else if (currentVizMode === 1) drawWinampBands();
+    else if (currentVizMode === 2) drawWaveformFlow();
+    else if (currentVizMode === 3) drawGeometricCascade();
+    else if (currentVizMode === 4) drawRadialSpectrumRing();
+    else if (currentVizMode === 5) drawParticlePulseField();
+    else draw3DTerrainWave();
+  }
+</script>
+</body>
+</html>
